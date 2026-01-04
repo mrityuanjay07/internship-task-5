@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Optimized Blog</title>
+
+<style>
+*{box-sizing:border-box;font-family:Arial,sans-serif}
+body{margin:0;background:#f4f4f4;color:#333}
+header{position:relative;text-align:center;color:#fff}
+.banner{width:100%;height:240px;object-fit:cover}
+.overlay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);animation:fade 2s}
+@keyframes fade{from{opacity:0;transform:translate(-50%,-60%)}to{opacity:1;transform:translate(-50%,-50%)}}
+main{max-width:900px;margin:auto;padding:15px}
+article{background:#fff;padding:15px;margin-bottom:12px;border-radius:5px}
+button{cursor:pointer;margin:4px}
+input,textarea,select{width:100%;padding:8px;margin:5px 0}
+.comment{background:#eee;padding:5px;margin-top:5px;border-radius:4px;font-size:.9em}
+.tag{display:inline-block;background:#222;color:#fff;padding:2px 6px;border-radius:3px;font-size:.8em;margin-right:4px}
+.like{color:red;font-weight:bold}
+.dark{background:#111;color:#eee}
+.dark article{background:#222}
+@media(max-width:600px){.banner{height:160px}}
+</style>
+</head>
+
+<body>
+
+<header>
+<img id="banner" class="banner" loading="lazy">
+<div class="overlay">
+<h1 id="bannerTitle">My Blog</h1>
+<p>Fast • Dynamic • Interactive</p>
+</div>
+</header>
+
+<main>
+
+<!-- Login Simulation -->
+<div id="loginBox"></div>
+
+<input id="search" placeholder="Search posts...">
+<select id="filter" onchange="filterCat()">
+<option value="">All Categories</option>
+</select>
+<button onclick="toggleTheme()">🌙 Theme</button>
+
+<h2>Add / Edit Post</h2>
+<input id="title" placeholder="Title">
+<textarea id="content" placeholder="Content"></textarea>
+<input id="image" placeholder="Banner image URL">
+<input id="category" placeholder="Category (e.g. Tech)">
+<button onclick="savePost()">Save Post</button>
+
+<hr>
+<section id="posts"></section>
+
+</main>
+
+<script defer>
+let user=localStorage.getItem("user")||"",
+posts=JSON.parse(localStorage.getItem("posts"))||[
+{title:"Welcome",content:"This blog supports login, likes, tags, and comments.",img:"https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=1200&q=60",cat:"General",likes:0,comments:[]}
+],
+current=-1,idx=0,
+banner=document.getElementById("banner"),
+bannerTitle=document.getElementById("bannerTitle"),
+container=document.getElementById("posts"),
+search=document.getElementById("search"),
+filter=document.getElementById("filter"),
+loginBox=document.getElementById("loginBox");
+
+function saveLS(){localStorage.setItem("posts",JSON.stringify(posts))}
+function renderLogin(){
+loginBox.innerHTML=user?
+`👤 Logged in as <b>${user}</b> <button onclick="logout()">Logout</button>`:
+`<input id="uname" placeholder="Enter username"><button onclick="login()">Login</button>`
+}
+function login(){user=uname.value;if(user){localStorage.setItem("user",user);renderLogin()}}
+function logout(){user="";localStorage.removeItem("user");renderLogin()}
+
+function render(list=posts){
+container.innerHTML="";
+filter.innerHTML='<option value="">All Categories</option>';
+[...new Set(posts.map(p=>p.cat))].forEach(c=>filter.innerHTML+=`<option>${c}</option>`);
+list.forEach((p,i)=>{
+let a=document.createElement("article");
+a.innerHTML=`
+<span class="tag">${p.cat}</span>
+<h3>${p.title}</h3>
+<p>${p.content}</p>
+<p class="like">❤️ ${p.likes}</p>
+<button onclick="like(${i})">Like</button>
+${user?`<button onclick="edit(${i})">✏️</button><button onclick="del(${i})">🗑</button>`:""}
+<div>
+<input placeholder="Add comment" id="c${i}">
+<button onclick="comment(${i})">💬</button>
+${p.comments.map(c=>`<div class="comment">${c}</div>`).join("")}
+</div>`;
+a.onclick=()=>updateBanner(p);
+container.appendChild(a)
+})
+}
+
+function savePost(){
+if(!user)return alert("Login required");
+let t=title.value,c=content.value,i=image.value||posts[0].img,cat=category.value||"General";
+t&&c&&(current>-1?
+posts[current]={...posts[current],title:t,content:c,img:i,cat}:
+posts.unshift({title:t,content:c,img:i,cat,likes:0,comments:[]}));
+current=-1;title.value=content.value=image.value=category.value="";
+saveLS();render();updateBanner(posts[0])
+}
+
+function edit(i){current=i;Object.assign(title,{value:posts[i].title});content.value=posts[i].content;image.value=posts[i].img;category.value=posts[i].cat}
+function del(i){posts.splice(i,1);saveLS();render()}
+function comment(i){let v=document.getElementById("c"+i).value;if(v){posts[i].comments.push(v);saveLS();render()}}
+function like(i){posts[i].likes++;saveLS();render()}
+function updateBanner(p){banner.src=p.img;bannerTitle.textContent=p.title}
+
+search.oninput=()=>render(posts.filter(p=>p.title.toLowerCase().includes(search.value.toLowerCase())));
+function filterCat(){render(filter.value?posts.filter(p=>p.cat===filter.value):posts)}
+function toggleTheme(){document.body.classList.toggle("dark")}
+
+setInterval(()=>{idx=(idx+1)%posts.length;updateBanner(posts[idx])},4000);
+
+renderLogin();render();updateBanner(posts[0]);
+</script>
+
+</body>
+</html>
